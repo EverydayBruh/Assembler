@@ -1,7 +1,7 @@
 BITS 64
 
 section .data
-asc     db ASCENDING
+asc     db 1
 rows	db 10
 cols	db 9
 matrix:
