@@ -5,35 +5,36 @@ asc     db 1
 rows	db 10
 cols	db 9
 matrix:
-	db 0xe9, 0x8e, 0x65, 0x94, 0x60, 0xc2, 0x08, 0x5c, 0x87
-	db 0xde, 0x5d, 0x14, 0x68, 0x29, 0xc8, 0xe3, 0x1a, 0xfe
-	db 0xaa, 0x19, 0x89, 0xc9, 0xe1, 0xf5, 0xb7, 0xf4, 0x01
-	db 0x17, 0x77, 0x3e, 0x4e, 0xc1, 0xf5, 0x3b, 0xe2, 0xbe
-	db 0xd8, 0x95, 0xeb, 0x68, 0x87, 0x20, 0x89, 0x87, 0x99
-	db 0x3e, 0x28, 0x24, 0x2a, 0xb4, 0x84, 0x44, 0xa0, 0xe2
-	db 0x56, 0xa1, 0x38, 0xfb, 0x71, 0x24, 0x00, 0xf3, 0x3c
-	db 0x40, 0x3c, 0xbb, 0x1f, 0xf9, 0x4f, 0x5e, 0xbd, 0x6b
-	db 0x90, 0x15, 0xeb, 0x18, 0x63, 0x49, 0xd0, 0x1e, 0x1a
-	db 0xa3, 0x19, 0xed, 0x2b, 0xcc, 0x89, 0x62, 0x74, 0x45
+	db 233, 142, 101, 148, 96, 194, 8, 92, 135
+    db 222, 93, 20, 104, 41, 200, 227, 26, 254
+    db 170, 25, 137, 201, 225, 245, 183, 244, 1
+    db 23, 119, 62, 78, 193, 245, 59, 226, 190
+    db 216, 149, 235, 104, 135, 32, 137, 135, 153
+    db 62, 40, 36, 42, 180, 132, 68, 160, 226
+    db 86, 161, 56, 251, 113, 36, 0, 243, 60
+    db 64, 60, 187, 31, 249, 79, 94, 189, 107
+    db 144, 21, 235, 24, 99, 73, 208, 30, 26
+    db 163, 25, 237, 43, 204, 137, 98, 116, 69
 
 section .data
-max db 10 dup(0)
+    max db 10 dup(0)
+    extern printf
 
 section .text
-global main
+    global main
 
 
-_start:
-    call main
-    .end:
-    jmp     _exit_normal
 
 
 main:
+    mov rdi, 1
+    mov rsi, 1
+    mov rax, 1
     call print_1
+    ;call print_matrix
     call    count_max
     call    sort
-    ret
+    retn
 
 count_max:
     mov     esi, matrix
@@ -159,8 +160,6 @@ _exit:
     mov     rax, 60     ; Syscall for exit
     syscall
 
-section .data
-    newline db 10         ; Newline character (ASCII code 10)
 
 section .text
     global print_matrix
@@ -179,7 +178,7 @@ print_matrix_loop:
     movzx   rdi, byte [rsi] ; Load the current element to be printed into rdi
 
     ; Print the current element (rdi) as a decimal value
-    call    putchar        ; Use putchar function to print a character
+    call    print_1        ; Use putchar function to print a character
 
     ; Print a space after each element (except the last one in a row)
     dec     rdx            ; Decrease the column counter
@@ -188,10 +187,6 @@ print_matrix_loop:
     call    putchar        ; Use putchar function to print a character
     jmp     print_next_element
 
-print_newline:
-    ; Print a newline character after each row
-    mov     rax, newline   ; Load the newline character
-    call    putchar        ; Use putchar function to print a character
 
 print_next_element:
     add     rsi, 1         ; Move to the next element in the matrix
@@ -213,18 +208,45 @@ putchar:
     ret
 
 
+section .data
+    format_string db "%d ", 0
+    newline db "%c", 0
+
 section .text
 
 print_1:
-    ; Write character to stdout (file descriptor 1)
-    mov rax, 1              ; System call number for sys_write
-    mov rdi, 1              ; File descriptor 1 (stdout)
-    mov rsi, matrix            ; Pointer to the character to print
-    mov rdx, 1              ; Number of bytes to write (1 for a single character)
-    syscall              ; Make the system call
+    movzx rsi, byte [rdi]
 
+    ; Call printf to print the first element
+    mov rdi, format_string
+    xor rax, rax    ; Clear RAX (RAX = 0) to indicate that there are no floating-point arguments
+    call printf
+    
+    push rax
+    call print_newline
+    
+    pop rax
     ret
 
+
+print_newline:
+    push rbp
+    mov rbp, rsp
+    push rdi
+    push rsi
+    push rax
+
+    mov rdi, newline
+    xor rax, rax   
+    mov rsi, 10
+    call printf
+
+    pop rax
+    pop rsi
+    pop rdi
+    mov rsp, rbp
+    pop rbp
+    ret
 
 
 
