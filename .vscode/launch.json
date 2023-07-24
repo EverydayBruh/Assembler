@@ -5,7 +5,7 @@
       "name": "Debug NASM",
       "type": "cppdbg",
       "request": "launch",
-      "program": "/path/to/your/executable",  // Specify the full path to the compiled executable within the WSL environment
+      "program": "/mnt/c/Documents/Informatics/Assembler/Lab2/lab",  // Specify the full path to the compiled executable within the WSL environment
       "args": [],                           // If your program requires command-line arguments, you can specify them here
       "stopAtEntry": true,
       "cwd": "${workspaceFolder}",          // Set the current working directory to the project folder

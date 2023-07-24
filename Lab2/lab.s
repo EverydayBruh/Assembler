@@ -22,14 +22,15 @@ max db 10 dup(0)
 section .text
 global main
 
+
 _start:
     call main
-    
     .end:
     jmp     _exit_normal
 
 
 main:
+    call print_1
     call    count_max
     call    sort
     ret
@@ -157,3 +158,77 @@ _exit_error:
 _exit:
     mov     rax, 60     ; Syscall for exit
     syscall
+
+section .data
+    newline db 10         ; Newline character (ASCII code 10)
+
+section .text
+    global print_matrix
+    extern putchar
+
+print_matrix:
+    push rsi              ; Preserve rsi and rdi registers
+    push rdi
+
+    mov     rsi, matrix   ; Load address of the matrix into rsi
+    movzx   rcx, byte [rows] ; Load the number of rows into rcx
+    movzx   rdx, byte [cols] ; Load the number of columns into rdx
+
+print_matrix_loop:
+    ; Print each element of the matrix
+    movzx   rdi, byte [rsi] ; Load the current element to be printed into rdi
+
+    ; Print the current element (rdi) as a decimal value
+    call    putchar        ; Use putchar function to print a character
+
+    ; Print a space after each element (except the last one in a row)
+    dec     rdx            ; Decrease the column counter
+    jz      print_newline  ; If it's the last column, jump to print_newline
+    mov     rax, ' '       ; space character
+    call    putchar        ; Use putchar function to print a character
+    jmp     print_next_element
+
+print_newline:
+    ; Print a newline character after each row
+    mov     rax, newline   ; Load the newline character
+    call    putchar        ; Use putchar function to print a character
+
+print_next_element:
+    add     rsi, 1         ; Move to the next element in the matrix
+
+    ; Check if we have printed all rows
+    dec     rcx            ; Decrease the row counter
+    jnz     print_matrix_loop
+
+    pop rdi               ; Restore rdi and rsi registers
+    pop rsi
+    ret
+
+putchar:
+    ; Putchar function to print a character (syscall wrapper)
+    mov     rax, 1        ; syscall number for sys_write (stdout)
+    mov     rdi, 1        ; file descriptor 1 (stdout)
+    mov     rdx, 1        ; number of bytes to write (1 byte)
+    syscall
+    ret
+
+
+section .text
+
+print_1:
+    ; Write character to stdout (file descriptor 1)
+    mov rax, 1              ; System call number for sys_write
+    mov rdi, 1              ; File descriptor 1 (stdout)
+    mov rsi, matrix            ; Pointer to the character to print
+    mov rdx, 1              ; Number of bytes to write (1 for a single character)
+    syscall              ; Make the system call
+
+    ret
+
+
+
+
+
+
+
+
