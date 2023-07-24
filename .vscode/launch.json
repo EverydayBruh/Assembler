@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug NASM",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "/mnt/c/Documents/Informatics/Assembler/Lab2/lab",  // Specify the full path to the compiled executable within the WSL environment
+      "args": [],                           // If your program requires command-line arguments, you can specify them here
+      "stopAtEntry": true,
+      "cwd": "${workspaceFolder}",          // Set the current working directory to the project folder
+      "externalConsole": true,
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb",              // Specify the path to the GDB executable (usually '/usr/bin/gdb')
+      "miDebuggerArgs": "-q",               // Additional arguments to pass to GDB (optional)
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
+}

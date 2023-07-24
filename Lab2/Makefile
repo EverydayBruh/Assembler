@@ -1,21 +1,24 @@
 AS = nasm
-LD = /usr/bin/ld
+LD = gcc
 
-ASFLAGS = -g -f elf64
-LDFLAGS = -static
-
+LDFLAGS = -no-pie
+NASMFLAGS = -f elf64 -g
+CFLAGS = -fPIE
 SRCS = lab.s
 OBJS = $(SRCS:.s=.o)
 
 EXE = lab
 
-all: $(SRCS) $(EXE)
+all: $(EXE)
 
 clean:
 	rm -rf $(EXE) $(OBJS)
 
 $(EXE): $(OBJS)
-	$(LD) $(LDOBJS) $(OBJS) -o $@
+	$(LD) $(LDFLAGS) $(OBJS) -o $@
 
 .s.o:
-	$(AS) $(ASFLAGS) $< -o $@
+	$(AS) $(NASMFLAGS) $< -o $@
+
+.c.o:
+	$(LD) $(CFLAGS) -c $< -o $@
