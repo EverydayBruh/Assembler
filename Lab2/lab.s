@@ -16,19 +16,23 @@ matrix:
 	db 0x90, 0x15, 0xeb, 0x18, 0x63, 0x49, 0xd0, 0x1e, 0x1a
 	db 0xa3, 0x19, 0xed, 0x2b, 0xcc, 0x89, 0x62, 0x74, 0x45
 
-section .bss
-    max      resb 10
+section .data
+max db 10 dup(0)
 
 section .text
-    global _start
+global main
 
 _start:
+    call main
+    
+    .end:
+    jmp     _exit_normal
+
 
 main:
     call    count_max
     call    sort
-    .end:
-    jmp     _exit_normal
+    ret
 
 count_max:
     mov     esi, matrix
