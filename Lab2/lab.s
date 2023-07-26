@@ -5,74 +5,90 @@ asc     db 1
 rows	db 10
 cols	db 9
 matrix:
-	db 0xe9, 0x8e, 0x65, 0x94, 0x60, 0xc2, 0x08, 0x5c, 0x87
-	db 0xde, 0x5d, 0x14, 0x68, 0x29, 0xc8, 0xe3, 0x1a, 0xfe
-	db 0xaa, 0x19, 0x89, 0xc9, 0xe1, 0xf5, 0xb7, 0xf4, 0x01
-	db 0x17, 0x77, 0x3e, 0x4e, 0xc1, 0xf5, 0x3b, 0xe2, 0xbe
-	db 0xd8, 0x95, 0xeb, 0x68, 0x87, 0x20, 0x89, 0x87, 0x99
-	db 0x3e, 0x28, 0x24, 0x2a, 0xb4, 0x84, 0x44, 0xa0, 0xe2
-	db 0x56, 0xa1, 0x38, 0xfb, 0x71, 0x24, 0x00, 0xf3, 0x3c
-	db 0x40, 0x3c, 0xbb, 0x1f, 0xf9, 0x4f, 0x5e, 0xbd, 0x6b
-	db 0x90, 0x15, 0xeb, 0x18, 0x63, 0x49, 0xd0, 0x1e, 0x1a
-	db 0xa3, 0x19, 0xed, 0x2b, 0xcc, 0x89, 0x62, 0x74, 0x45
+	dw 233, 142, 101, 148, 96, 194, 8, 92, 135
+    dw 222, 93, 20, 104, 41, 200, 227, 26, 254
+    dw 170, 25, 137, 201, 225, 245, 183, 244, 1
+    dw 23, 119, 62, 78, 193, 245, 59, 226, 190
+    dw 216, 149, 235, 104, 135, 32, 137, 135, 153
+    dw 62, 40, 36, 42, 180, 132, 68, 160, 226
+    dw 86, 161, 56, 251, 113, 36, 0, 243, 60
+    dw 64, 60, 187, 31, 249, 79, 94, 189, 107
+    dw 144, 21, 235, 24, 99, 73, 208, 30, 26
+    dw 163, 25, 237, 43, 204, 137, 98, 116, 69
 
-section .bss
-    max      resb 10
+section .data
+    min dw 10 dup(0)
+    max dw 10 dup(0)
+    extern printf
 
 section .text
-    global _start
+    global main
 
-_start:
+section .text
+    global print_matrix
+
+
 
 main:
-    call    count_max
-    call    sort
-    .end:
-    jmp     _exit_normal
+    ;mov rdi, max
+    ;call print_1
+    ;call print_1
+    call    count_min
+    ; mov rdi, matrix
+    ; movzx rdx, byte[rows]
+    ; movzx rcx, byte[cols]
+    ; call    print_matrix
+    mov rdi, min
+    mov rdx, 1
+    movzx rcx, byte[rows]
+    call    print_matrix
+    ;call    sort
+    ;call    print_newline
+    ;call    print_matrix
+    retn
 
-count_max:
-    mov     esi, matrix
-    mov     edi, max
-    movzx   ecx, byte [rows]
+count_min:
+    mov     rsi, matrix
+    mov     rdi, min
+    movzx   rdx, byte [rows]
     .iterate_rows:
-        xor     ebx, ebx
-        push    rcx
-        movzx   ecx, byte [cols]
+        mov     bx, 0x7FFF   ; Initialize ebx (minimum value) to the maximum 16-bit signed value
+        movzx   rcx, byte [cols]
         .iterate_cols:
-            movzx   eax, byte [esi]
-            cmp     eax, ebx
-            jle     .skip_update
-            mov     ebx, eax
+            mov   ax, word [rsi]
+            cmp     ax, bx
+            jge     .skip_update
+            mov     bx, ax
             .skip_update:
-            inc     esi
+            add     rsi, 2
             loop    .iterate_cols
-        pop     rcx
-        mov     byte [edi], bl
-        inc     edi
-        loop    .iterate_rows
+        mov     word [rdi], bx
+        add     rdi, 2
+        dec     rdx             ; Decrement the row counter
+        jnz     .iterate_rows 
     ret
 
 swap:
     mov     eax, esi
     mov     ebx, edi
-    mul     byte [cols]
+    ;imul    eax, eax, byte [cols] ; Multiply esi by 2 to get the element size in bytes
+    ;imul    ebx, ebx, byte [cols] ; Multiply edi by 2 to get the element size in bytes
     add     eax, matrix
-    xchg    eax, ebx
-    mul     byte [cols]
-    add     eax, matrix
+    add     ebx, matrix
     movzx   ecx, byte [cols]
+    shl     ecx, 1   
     .swap_max:
         add     esi, max
         add     edi, max
-        movzx   edx, byte [edi]
-        xchg    dl, byte [esi]
-        mov     byte [edi], dl
+        movzx   edx, word [edi]
+        xchg    dx, word [esi]
+        mov     word [edi], dx
     .iterate_cols:
-        movzx   edx, byte [eax]
-        xchg    dl, byte [ebx]
-        mov     byte [eax], dl
-        inc     eax
-        inc     ebx
+        movzx   edx, word [eax]
+        xchg    dx, word [ebx]
+        mov     word [eax], dx
+        add     eax, 2
+        add     ebx, 2
         loop    .iterate_cols
     ret
 
@@ -153,3 +169,106 @@ _exit_error:
 _exit:
     mov     rax, 60     ; Syscall for exit
     syscall
+
+
+
+
+
+section .data
+    format_string db "%d ", 0
+    newline db "%c", 0
+
+section .text
+
+print_1:
+    push rax
+    push rdi
+    push rbx
+    push rsi
+    push rcx
+
+    mov rbx, rsp    
+    and rsp, -16
+
+    movzx rsi, word [rdi]
+    mov rdi, format_string
+    xor rax, rax    ; Clear RAX (RAX = 0) to indicate that there are no floating-point arguments
+    call printf
+    
+    mov rsp, rbx
+    
+    pop rcx
+    pop rsi
+    pop rbx
+    pop rdi
+    pop rax
+    ret
+
+
+print_newline:
+    push rax
+    push rdi 
+    push rbx
+    push rsi
+    push rcx
+   
+    mov rbx, rsp    
+    and rsp, -16
+
+    mov rdi, newline
+    xor rax, rax   
+    mov rsi, 10
+    call printf
+
+    mov rsp, rbx
+
+    pop rcx
+    pop rsi
+    pop rbx
+    pop rdi
+    pop rax
+    ret
+
+
+
+
+
+
+
+print_matrix: ; rdi - matrix, rdx - rows, rcx - cols
+    
+    push rax
+    push rdi
+    push rsi
+    push rbx
+    
+    mov rax, rdx
+    mov rbx, rcx
+
+    print_matrix_outer_loop:
+        print_matrix_inner_loop:
+            ; Print the current element
+            call print_1
+            
+            ; Move to the next element in the same row
+            add rdi, 2
+            ; Check if the row has ended
+            sub rbx, 1
+            jnz print_matrix_inner_loop
+
+    ; Reset rbx to the original cols value
+    mov rbx, rcx
+    
+    ; Move to the next row
+    call print_newline
+    sub rax, 1
+    jnz print_matrix_inner_loop
+
+    ; Print a newline to move to the next line after printing the entire matrix
+    
+    pop rbx
+    pop rsi
+    pop rdi
+    pop rax
+    ret
+    
