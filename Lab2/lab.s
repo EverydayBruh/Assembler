@@ -30,17 +30,16 @@ section .text
 
 
 main:
-    ;mov rdi, max
-    ;call print_1
-    ;call print_1
     call    count_min
-    ;call    print_min
-    ;call    autoprint_matrix
+    call    print_min
+    call    autoprint_matrix
+    call    print_newline
 
     call sort
 
-    ;call print_newline
-    ;call    print_min
+    call    print_newline
+    call    print_min
+    call    autoprint_matrix
     ;call    autoprint_matrix
     ;call    sort
     ;call    print_newline
@@ -113,48 +112,62 @@ sort:
     movzx   rax, byte [rows]    ; eax = gap
     .while_gap:
         shr     rax, 1      ; gap //= 2
-        cmp     rax, 0      ; while gap > 0
-        jle     .end_sort
 
+        cmp     rax, 1     ; if gap < 1, gap = 1
+        jge     .gap_greater_zero
+        mov     rax, 1
+        .gap_greater_zero:
+        mov r8, 0
         xor rdi, rdi ; rdi = i = 0      
         xor rsi, rsi
-        add rsi, rax ; rsx = i + gap
-        .process_gap:
-            call    compare     ;esi, edi - raws index
-            cmp     rdx, 0
-            jge     .skip_swap
+        add rsi, rax ; rsi = i + gap
+        call print_min
+        .process_gap:        
+            call    compare     ;rsi, rdi - raws index
+            cmp     rdx, 0      ;rdx 1, if swap
+            je     .skip_swap
+            mov     r8, 1
             call    swap    ; swap(max[i], max[i + gap])
         .skip_swap:
             inc     rdi         ; i++
             inc     rsi
-            mov   cl, byte [rows]
-            cmp     byte [rsi], cl ; i + gap < rows
+            movzx   rcx, byte [rows]
+            cmp     rsi, rcx ; i + gap < rows
             jl      .process_gap
-        jmp     .while_gap
+
+        cmp     rax, 2      ; while gap >= 2 || swap = true(1)
+        jge     .while_gap
+        cmp     r8, 1
+        je      .while_gap
     .end_sort:
     ret
 
 
 compare:
-;esi, edi - raws index
+;rdi, rsi - raws index
+;rdi = i; rsi = i + gap
 ;return rdx 1, if swap
     push rcx
-    push rdx
-    mov     rcx, min
-    add     rcx, rsi
-    movzx   rdx, word [rcx]
+    push rax
     mov     rcx, min
     add     rcx, rdi
-    movzx   rcx, word [rcx]
-    cmp     byte [asc], 1
-    je      .asc
+    add     rcx, rdi
+    movzx   rdx, word [rcx] ;rdx = min[i]
+
+    mov     rcx, min
+    add     rcx, rsi
+    add     rcx, rsi
+    movzx   rax, word [rcx] ;rax = min[i + gap]
+    ;cmp     byte [asc], 1
+    ;je      .asc
+    ;call print_min
     jmp     .descending
     .asc:
-        cmp     rcx, rdx    ; swap if max[j - gap] > max[j]
+        cmp     rdx, rax    ; swap if min[i] > min[i + gap]
         jg      .need_swap
         jmp     .no_swap
     .descending:
-        cmp     rcx, rdx   ; swap if max[j - gap] < max[j]
+        cmp     rdx, rax    ; swap if min[i] < min[i + gap]
         jl      .need_swap
         jmp     .no_swap
     .need_swap:
@@ -164,7 +177,7 @@ compare:
     mov     rdx, 0
 
     .comp_end:
-    pop rdx
+    pop rax
     pop rcx
     ret
 
