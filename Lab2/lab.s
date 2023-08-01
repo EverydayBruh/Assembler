@@ -1,9 +1,8 @@
 BITS 64
-
 section .data
-asc     db 1
-rows	db 10
-cols	db 9
+    asc db asc_value
+    rows	db 10
+    cols	db 9
 matrix:
 	dw 233, 142, 101, 148, 96, 194, 8, 92, 135
     dw 222, 93, 20, 104, 41, 200, 227, 26, 254
@@ -18,7 +17,6 @@ matrix:
 
 section .data
     min dw 10 dup(0) ;save min value for every row
-    max dw 10 dup(0)
     extern printf
 
 section .text
@@ -158,8 +156,8 @@ compare:
     add     rcx, rsi
     add     rcx, rsi
     movzx   rax, word [rcx] ;rax = min[i + gap]
-    ;cmp     byte [asc], 1
-    ;je      .asc
+    cmp     byte [asc], 1
+    je      .asc
     ;call print_min
     jmp     .descending
     .asc:
