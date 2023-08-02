@@ -13,6 +13,8 @@ file_exist_msg_len:
 	db 		36
 buffer_len:
 	db 		10
+vowels:
+    db "aeiou", 0        ; String containing the lowercase vowels and a null terminator.
 
 section .bss
 buffer:
@@ -97,6 +99,12 @@ _start:
 			je 		not_a_word
 			cmp 	byte[buffer + rcx], 0xA
 			je 		meet_new_line
+            
+
+            mov rdi, buffer
+            add rdi, rcx
+            call is_vowel
+
 
             mov 	al, byte[buffer + rcx] ; Process a character (write to the output buffer).
             ; Check if it's the first symbol of the line.
@@ -159,4 +167,44 @@ fin:
 	mov		eax, 60
 	mov		edi, 0
 	syscall                    ; Invokes the system call to exit the program.
+
+
+
+; Function to check if the current symbol is a vowel
+; Input:
+;   rdi: ASCII character to check
+; Output:
+;   rax: 1 (true) if the character is a vowel, 0 (false) otherwise
+is_vowel:
+    push rdx                 ; Save rdx register on the stack
+    push rsi                 ; Save rsi register on the stack
+
+    ; Convert the ASCII character to lowercase (if it's an uppercase letter).
+    xor rax, rax
+    mov al, byte [rdi]       ; Load the ASCII character into al.
+    and al, 0xDF             ; Convert to uppercase (set the 6th bit).
+    mov byte [rdi], al       ; Store the converted character back in memory.
+
+    ; Check if the character is a vowel 
+    mov rsi, vowels          
+    xor rax, rax             
+    check_vowel_loop:
+        lodsb                    ; Load the next character from the vowels string into al.
+        cmp al, 0                ; Check if the end of the string is reached (null terminator).
+        je check_vowel_end       ; If so, end the loop.
+
+        cmp al, byte [rdi]       ; Compare the current vowel with the input character.
+        je found_vowel           ;
+
+        jmp check_vowel_loop     ; Continue the loop to check the next vowel.
+
+    found_vowel:
+        mov rax, 1               ; Set rax to 1 (true) to indicate a vowel.
+        jmp check_vowel_end
+
+    check_vowel_end:
+        pop rsi                  ; Restore rsi register from the stack
+        pop rdx                  ; Restore rdx register from the stack
+    ret                      ; Return from the function.
+
 
