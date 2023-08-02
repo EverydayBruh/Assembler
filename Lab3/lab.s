@@ -121,7 +121,7 @@ _start:
             jmp 	while_read_line
             first_symb:
                 ; Process flag
-				mov 	ah, byte[buffer + rcx] 
+				;mov 	ah, byte[buffer + rcx] 
             	;call is_vowel ; rax = 2 of vowel, 1 otherwise
 				mov byte [flag], 1
             
