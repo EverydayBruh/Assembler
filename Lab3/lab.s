@@ -14,13 +14,15 @@ file_exist_msg_len:
 buffer_len:
 	db 		10
 vowels:
-    db "aeiou", 0        ; String containing the lowercase vowels and a null terminator.
+    db "AEIOU", 0        
 
 section .bss
 buffer:
 	resb	256
 symb:
 	resb 	1
+flag:
+	resb	0
 fd:
 	resq 	1
 
@@ -71,7 +73,7 @@ _start:
 		syscall
 
 	mov 	[fd], rax       ; Store the file descriptor in the 'fd' variable.
-	mov 	byte[symb], 0   ; Clear the 'symb' variable to mark the absence of a symbol.
+	mov 	byte[flag], 0   ; Clear the 'flag' variable. 0 - no world, 1 - save, 2 - delete
 
 	while_line:
         ; Read a line from the buffer.
@@ -101,46 +103,49 @@ _start:
 			je 		meet_new_line
             
 
-            mov rdi, buffer
-            add rdi, rcx
-            call is_vowel
+            
 
 
-            mov 	al, byte[buffer + rcx] ; Process a character (write to the output buffer).
+            mov 	bl, byte[buffer + rcx] ; Process a character (write to the output buffer).
+
             ; Check if it's the first symbol of the line.
-            cmp 	byte[symb], 0
+            cmp 	byte[flag], 0
             je 		first_symb
-            ; Check if the current character matches the last symbol written.
-            cmp 	byte[symb], al
-            jne 	useful_symb
-            ; If the current character matches the last symbol written, skip it.
+
+            ; Check if the word need to be saved
+            cmp 	byte[flag], 1
+            je 	save_symb
+
+            ; If the current word not need to be saved, skip it.
             inc 	rcx
             jmp 	while_read_line
             first_symb:
-                ; Save the first symbol encountered in the 'symb' variable.
-                mov 	byte[symb], al
+                ; Process flag
+				mov 	ah, byte[buffer + rcx] 
+            	;call is_vowel ; rax = 2 of vowel, 1 otherwise
+				mov byte [flag], 1
             
-            useful_symb:
+            save_symb:
                 ; Write the current character to the output buffer.
-                mov 	byte[buffer + r15], al
+                mov 	byte[buffer + r15], bl
                 inc 	r15
                 inc 	rcx
                 jmp		while_read_line
 
 			not_a_word:
                 ; Check if this is not the first character and add a space.
-				cmp		byte[symb], 0
+				cmp		byte[flag], 0
 				je 		not_first
 					mov 	byte[buffer + r15], 0x20
 					inc 	r15
 				not_first:
-				mov 	byte[symb], 0   ; Clear the 'symb' variable to mark the absence of a symbol.
+				mov 	byte[flag], 0   ; Clear the 'flag' variable to mark the end of word
 				inc 	rcx
 				jmp 	while_read_line
 
 			meet_new_line:
-                ; Clear the 'symb' variable to mark the absence of a symbol.
-				mov 	byte[symb], 0
+                ; Clear the 'flag' variable to mark the end of word
+				mov 	byte[flag], 0
 				inc 	rcx
 				inc		r15
 				jmp 	while_read_line
@@ -157,7 +162,7 @@ _start:
 		dec 	r15                     ; Decrease r15 to remove the newline character from the end.
 		cmp 	byte[buffer + r15], 0xA ; Check if the last character of the line is a newline.
 		jne 	while_line
-		mov 	byte[symb], 0
+		mov 	byte[flag], 0
 		jmp 	while_line
 
 fin:
@@ -172,34 +177,32 @@ fin:
 
 ; Function to check if the current symbol is a vowel
 ; Input:
-;   rdi: ASCII character to check
+;   ah: ASCII character to check
 ; Output:
-;   rax: 1 (true) if the character is a vowel, 0 (false) otherwise
+;   rax: 2 if the character is a vowel, 1 otherwise
 is_vowel:
     push rdx                 ; Save rdx register on the stack
     push rsi                 ; Save rsi register on the stack
 
-    ; Convert the ASCII character to lowercase (if it's an uppercase letter).
-    xor rax, rax
-    mov al, byte [rdi]       ; Load the ASCII character into al.
-    and al, 0xDF             ; Convert to uppercase (set the 6th bit).
-    mov byte [rdi], al       ; Store the converted character back in memory.
+    and ah, 0xDF             ; Convert to uppercase (set the 6th bit).
 
     ; Check if the character is a vowel 
-    mov rsi, vowels          
-    xor rax, rax             
+    mov rsi, vowels              
     check_vowel_loop:
         lodsb                    ; Load the next character from the vowels string into al.
         cmp al, 0                ; Check if the end of the string is reached (null terminator).
-        je check_vowel_end       ; If so, end the loop.
+        je not_found_vowel       ; If so, end the loop.
 
-        cmp al, byte [rdi]       ; Compare the current vowel with the input character.
+        cmp al, ah     ; Compare the current vowel with the input character.
         je found_vowel           ;
 
         jmp check_vowel_loop     ; Continue the loop to check the next vowel.
 
     found_vowel:
-        mov rax, 1               ; Set rax to 1 (true) to indicate a vowel.
+        mov rax, 2               ; Set rax to 1 (true) to indicate a vowel.
+        jmp check_vowel_end
+	not_found_vowel:
+		mov rax, 1               ; Set rax to 1 (true) to indicate a vowel.
         jmp check_vowel_end
 
     check_vowel_end:
