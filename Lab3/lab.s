@@ -14,15 +14,13 @@ file_exist_msg_len:
 buffer_len:
 	db 		10
 vowels:
-    db "AEIOU", 0        
+    db "AEIOU", 0       
+flag:
+	db	0 
 
 section .bss
 buffer:
 	resb	256
-symb:
-	resb 	1
-flag:
-	resb	0
 fd:
 	resq 	1
 
@@ -43,28 +41,7 @@ _start:
 	movzx 	rdx, byte[buffer_len]
 	syscall ; Invokes the system call to read user input and store it in the buffer.
 	mov 	byte[buffer + rax - 1], 0x0 ; Null-terminate the input stored in the buffer.
-	mov 	rax, 2
-	mov 	rdi, buffer
-    mov 	rsi, 0000o  ; File flags (O_WRONLY | O_CREAT | O_TRUNC).
-    mov 	rdx, 0666o  
-	syscall  ; Invokes the system call to open the file.
-
-	cmp 	rax, 0
-	jl		create_file ; Jump to the label create_file if the file doesn't exist.
-		
-        ; If the file exists, prompt the user to rewrite it.
-        mov 	rax, 1
-		mov 	rdi, 1
-		mov 	rsi, file_exist_msg
-		movzx 	rdx, byte[file_exist_msg_len]
-		syscall
-		mov 	rax, 0
-		mov 	rdi, 0
-		mov 	rsi, rsp
-		movzx 	rdx, byte[buffer_len]
-		syscall
-		cmp 	byte[rsp], 'y'
-		jne 	fin
+	
 	create_file:    ; Label used to create the file.
 		mov 	rax, 2
 		mov 	rdi, buffer
@@ -110,8 +87,13 @@ _start:
 
             ; Check if it's the first symbol of the line.
             cmp 	byte[flag], 0
-            je 		first_symb
+            jne 		not_first_symb
+				; Process firs symbol
+				mov 	ah, bl
+				call is_vowel ; rax = 2 of vowel, 1 otherwise
+				mov byte [flag], al
 
+			not_first_symb:
             ; Check if the word need to be saved
             cmp 	byte[flag], 1
             je 	save_symb
@@ -119,11 +101,7 @@ _start:
             ; If the current word not need to be saved, skip it.
             inc 	rcx
             jmp 	while_read_line
-            first_symb:
-                ; Process flag
-				;mov 	ah, byte[buffer + rcx] 
-            	;call is_vowel ; rax = 2 of vowel, 1 otherwise
-				mov byte [flag], 1
+            
             
             save_symb:
                 ; Write the current character to the output buffer.
@@ -133,8 +111,8 @@ _start:
                 jmp		while_read_line
 
 			not_a_word:
-                ; Check if this is not the first character and add a space.
-				cmp		byte[flag], 0
+                ; Check if we printed word and add a space.
+				cmp		byte[flag], 2
 				je 		not_first
 					mov 	byte[buffer + r15], 0x20
 					inc 	r15
@@ -147,6 +125,7 @@ _start:
                 ; Clear the 'flag' variable to mark the end of word
 				mov 	byte[flag], 0
 				inc 	rcx
+				mov 	byte[buffer + r15], 0xA
 				inc		r15
 				jmp 	while_read_line
 
@@ -179,7 +158,7 @@ fin:
 ; Input:
 ;   ah: ASCII character to check
 ; Output:
-;   rax: 2 if the character is a vowel, 1 otherwise
+;   al: 2 if the character is a vowel, 1 otherwise
 is_vowel:
     push rdx                 ; Save rdx register on the stack
     push rsi                 ; Save rsi register on the stack
@@ -199,10 +178,10 @@ is_vowel:
         jmp check_vowel_loop     ; Continue the loop to check the next vowel.
 
     found_vowel:
-        mov rax, 2               ; Set rax to 1 (true) to indicate a vowel.
+        mov al, 2               ; Set al to 2 to indicate a vowel.
         jmp check_vowel_end
 	not_found_vowel:
-		mov rax, 1               ; Set rax to 1 (true) to indicate a vowel.
+		mov al, 1               
         jmp check_vowel_end
 
     check_vowel_end:
