@@ -7,10 +7,10 @@ input_msg:
 	db 		"Filename: ", 0x0
 input_msg_len:
 	db 		11
-file_exist_msg:
-	db 		"File already exists. Rewrite? (y/n)", 0x0
-file_exist_msg_len:
-	db 		36
+var_not_found_msg:
+	db 		"Environment variable not found", 0x0
+var_not_found_msg_len:
+	db 		31
 buffer_len:
 	db 		10
 vowels:
@@ -29,17 +29,134 @@ section	.text
 
 ;rdi - addr
 
+section .data
+    ; Environment variable name to look for
+    env_var_name db "file_name", 0
+    ; Buffer to store the value of the environment variable
+    buffer_size equ 256
+
+section .bss
+    ; Variable to store the address of the environment variables
+    environ resq 1
+
+
+find_env_var:
+    ; Load the current environment variable address into rdx
+    mov rdx, qword [rdi + rsi*8]
+
+    ; Check if we reached the end of the environment variables (null pointer)
+    test rdx, rdx
+    jz not_found
+
+    ; Compare the current environment variable with the one we are looking for
+    call compare_env_var_name
+    cmp rax, 0 ;(rax = 0 if equal)
+    jz found
+
+    ; Move to the next environment variable
+    inc rsi
+    jmp find_env_var
+
+not_found:
+    ; Code to handle the case when the environment variable is not found
+    ; (e.g., set default value or exit the program).
+
+found:
+    ; rdx now points to the environment variable we found.
+    ; We need to extract the value part (string after the equals sign).
+
+    ; Find the length of the environment variable string
+    call string_length
+    ; Rax now contains the length of the environment variable string
+
+    ; Load the address of the value part (rdx + length of the name + 1)
+    add rdx, rax, 1
+
+    ; Move the value part to the buffer
+    mov rsi, buffer
+    mov rcx, rax
+    rep movsb
+
+    ; Null-terminate the buffer
+    mov byte [rsi + rax], 0
+
+    ; The value of the environment variable is now stored in the buffer.
+
+    ; Exit the program (optional)
+    ; call exit_program
+
+    ; Your code continues here...
+
+get_environ:
+    ; Function to get the address of the environment variables
+    mov rax, 0x3c ; __NR_getpid for x86-64 Linux
+    xor edi, edi  ; Set edi to 0 (current process ID)
+    syscall
+    ret
+
+compare_env_var_name:
+    ; Function to compare the environment variable name with the name we are looking for
+    ; Input:
+    ; rdx - Pointer to the current environment variable
+    ; Output:
+    ; rax - 0 if the strings are equal, non-zero otherwise
+
+    ; Initialize rax to 0 (equality flag)
+    xor rax, rax
+
+    ; Compare strings byte by byte until we reach a null terminator
+    ; or until we find a mismatch
+    xor rcx, rcx ; Counter for the loop
+.loop:
+    mov al, [rdx + rcx] ; Load a byte from the current environment variable
+    mov bl, [env_var_name + rcx] ; Load a byte from the target environment variable name
+    cmp al, bl ; Compare the two bytes
+    jne .done ; If they are not equal, exit the loop
+    test al, al ; Check if we reached the end of the current environment variable
+    jz .done ; If yes, the strings are equal
+    inc rcx ; Move to the next byte
+    jmp .loop
+
+.done:
+    ret
+
+string_length:
+    ; Function to calculate the length of a null-terminated string
+    ; Input:
+    ; rdx - Pointer to the string
+    ; Output:
+    ; rax - Length of the string (excluding the null terminator)
+
+    xor rax, rax ; Initialize rax to 0 (length counter)
+
+.loop:
+    cmp byte [rdx + rax], 0 ; Check if the current byte is null (end of string)
+    jz .done ; If yes, we reached the end of the string
+    inc rax ; Move to the next byte
+    jmp .loop
+
+.done:
+    ret
+
+
+
 _start:
-	mov 	rax, 1
-	mov 	rdi, 1
-	mov 	rsi, input_msg
-	movzx 	rdx, byte[input_msg_len]
-	syscall ; Invokes the system call to print the input_msg.
-	mov 	rax, 0
-	mov 	rdi, 0
-	mov 	rsi, buffer
-	movzx 	rdx, byte[buffer_len]
-	syscall ; Invokes the system call to read user input and store it in the buffer.
+	; mov 	rax, 1
+	; mov 	rdi, 1
+	; mov 	rsi, input_msg
+	; movzx 	rdx, byte[input_msg_len]
+	; syscall ; Invokes the system call to print the input_msg.
+	; mov 	rax, 0
+	; mov 	rdi, 0
+	; mov 	rsi, buffer
+	; movzx 	rdx, byte[buffer_len]
+	; syscall ; Invokes the system call to read user input and store it in the buffer.
+    mov rdi, rsp
+    call get_environ
+
+    ; Loop through the environment variables
+    xor rsi, rsi ; Initialize rsi to 0 for the index
+
 	mov 	byte[buffer + rax - 1], 0x0 ; Null-terminate the input stored in the buffer.
 	
 	create_file:    ; Label used to create the file.
