@@ -14,7 +14,7 @@ int blur(unsigned char *img, unsigned char *blur_img, int width, int hight);
 
 int main(void) {
     const char *relativePath = "../img/";
-    char *name = "0";
+    char *name = "3";
     int width, height, channels;
 
 

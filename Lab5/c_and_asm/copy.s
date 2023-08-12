@@ -12,54 +12,6 @@ flag2:
 flag3:
     ret
 
-blur_pixel:
-    ; Parameters:
-    ; [rdi] - img_pixel
-    ; [rsi] - blur_pixel
-    ; [rdx] - width
-    ;  Save rbx, rbp, r12, r13, r14, r15
-    push r12
-    push r13
-
-    xor rax, rax            ; Clear rax (sum)
-
-    ; Loop through matrix rows
-    xor r8, r8
-    .small_row_loop:
-        ; Loop through matrix columns
-        xor r9, r9
-        .small_col_loop:
-            mov r10, r9
-            add r10, -2
-            imul r10, 3                  ;r10 = (col - 2)*3
-            mov r11, r8
-            add r11, -2
-            imul r11, rdx
-            imul r11, 3                  ;r11 = (row - 2)*width*3
-            add r10, r11                ;r10 = (col - 2)*3 + (row - 2)*width*3
-            movzx r12, byte [rdi + r10]  ;*(img_pixel + (col - 2)*3 + (row - 2)*width*3);
-            mov r10, r8
-            imul r10, 5
-            add r10, r9
-            movzx r13, byte [matrix + r10]
-            imul r12, r13
-            add rax, r12  ; Accumulate sum
-            inc r9
-        cmp r9, 5
-        jl .small_col_loop
-
-    inc r8
-    cmp r8, 5
-    jl .small_row_loop
-
-    ; Normalize and store the result
-    mov rcx, 256
-    div rcx
-    mov byte [rsi], al
-
-    pop r13
-    pop r12
-    ret
 
 blur:
     ; Parameters:
@@ -67,10 +19,10 @@ blur:
     ; [rsi] - blur_img
     ; [rdx] - width
     ; [rcx] - height
-    push r12
     push rbp
     mov rbp, rsp
     sub rsp, 64
+    mov [rsp+56], r12
 
     mov r11, rdi
     mov r12, rsi
@@ -84,7 +36,6 @@ blur:
             imul rax, rdx
             add rax, r9
             imul rax, 3
-            call flag
             
             mov [rsp], rdx
             mov [rsp+8], rcx
@@ -154,13 +105,64 @@ blur:
         inc r8
         cmp r8, rcx
         jl .row_loop
-
+    mov r12, [rsp+56]
     leave
-    pop r12
     ret
 
-section .data
-    float256 dd 256.0
 
-section .bss
-    resb 16    ; For alignment
+blur_pixel:
+    ; Parameters:
+    ; [rdi] - img_pixel
+    ; [rsi] - blur_pixel
+    ; [rdx] - width
+    push rbp
+    mov rbp, rsp
+    sub rsp, 16
+    ;  Save rbx, rbp, r12, r13, r14, r15
+    mov [rsp], r12
+    mov [rsp+8], r13
+
+    xor rax, rax            ; Clear rax (sum)
+
+    ; Loop through matrix rows
+    xor r8, r8
+    .small_row_loop:
+        ; Loop through matrix columns
+        xor r9, r9
+        .small_col_loop:
+            mov r10, r9
+            add r10, -2
+            imul r10, 3                  ;r10 = (col - 2)*3
+            mov r11, r8
+            add r11, -2
+            imul r11, rdx
+            imul r11, 3                  ;r11 = (row - 2)*width*3
+            add r10, r11                ;r10 = (col - 2)*3 + (row - 2)*width*3
+            movzx r12, byte [rdi + r10]  ;*(img_pixel + (col - 2)*3 + (row - 2)*width*3);
+            mov r10, r8
+            imul r10, 5
+            add r10, r9
+            movzx r13, byte [matrix + r10]
+            imul r12, r13
+            add rax, r12  ; Accumulate sum
+            inc r9
+        cmp r9, 5
+        jl .small_col_loop
+
+    inc r8
+    cmp r8, 5
+    jl .small_row_loop
+
+    ; Normalize and store the result
+    mov rcx, 256
+    call flag
+    cqo
+    div rcx
+    mov byte [rsi], al
+
+    mov r12, [rsp]
+    mov r13, [rsp+8]
+    leave
+    ret
+
+
