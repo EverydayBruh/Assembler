@@ -8,49 +8,8 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../stb_image/stb_image_write.h"
 
-int matrix [5][5] = 
-{
- 1, 4, 6 , 4 , 1,
- 4, 16, 24, 16, 4,
- 6, 24, 36, 24, 6,
- 4, 16, 24, 16, 4,
- 1, 4, 6 , 4 , 1
-};
 
-void blurpixel(unsigned char *img_pixel, unsigned char *blur_pixel, int width)
-{
-    float sum = 0;
-    unsigned char *adress;
-    for(int row = 0; row < 5; row++){
-    for(int col = 0; col < 5; col++){
-        adress = img_pixel + (col - 2)*3 + (row - 2)*width*3;
-        sum+=(*(adress)) * matrix[row][col];
-    }}
-    sum/= 256;
-    
-    //printf("Sum: %f\n", sum);
-   *blur_pixel = (uint8_t)fmin(sum, 255.0);
-}
-
-
-int blur(unsigned char *img, unsigned char *blur_img, int width, int hight){
-    int shift = 0;
-    for(int row = 0; row < hight; row++){
-    for(int col = 0; col < width; col++)
-    {   
-        shift = col + row*width;
-        shift*=3;
-        for(int i = 0; i < 3; i++){
-            if(row >= 2 && col >= 2 && row < hight - 2 && col < width - 2){
-                blurpixel(img + shift + i, blur_img + shift + i, width);
-            }else{
-                *(blur_img + shift + i) = *(img + shift + i);
-            }
-        }
-    }}
-    return 0;
-}
-
+int blur(unsigned char *img, unsigned char *blur_img, int width, int hight);
 
 
 int main(void) {
