@@ -1,59 +1,17 @@
+bits 64
 section .data
     matrix db 1, 4, 6, 4, 1, 4, 16, 24, 16, 4, 6, 24, 36, 24, 6, 4, 16, 24, 16, 4, 1, 4, 6, 4, 1
 
 section .text
     global blur
-    extern fmin
 
-blurpixel:
-    ; Parameters:
-    ; [rdi] - img_pixel
-    ; [rsi] - blur_pixel
-    ; [rdx] - width
-
-    xorps xmm0, xmm0         ; Clear xmm0 (sum)
-    mov rcx, rdi             ; Save img_pixel for addressing
-    sub rcx, 3*5             ; Point to the start of the image area
-
-    ; Loop through matrix rows
-    xor r8, r8
-    .row_loop:
-        mov rax, rcx
-
-        ; Loop through matrix columns
-        xor r9, r9
-        .col_loop:
-            movzx r10b, byte [rax + r9]
-            movzx r11b, byte [r8 + r9]
-            imul r10d, r11d
-            add eax, r10d   ; Accumulate sum
-            inc r9
-        cmp r9, 5
-        jl .col_loop
-
-        add rcx, rdx*3      ; Move to next row
-        add r8, rdx*3
-        inc r8
-    cmp r8, 5*rdx
-    jl .row_loop
-
-    ; Normalize and store the result
-    movaps xmm1, xmm0
-    movaps xmm2, xmm0
-    shufps xmm2, xmm2, 0x55
-    addps xmm1, xmm2
-    movaps xmm2, xmm0
-    shufps xmm2, xmm2, 0xAA
-    addps xmm1, xmm2
-    movaps xmm2, xmm0
-    shufps xmm2, xmm2, 0xFF
-    addps xmm1, xmm2
-    divps xmm1, [rel float256]
-    cvtps2dq xmm1, xmm1
-    packuswb xmm1, xmm1
-    movd [rsi], xmm1
-
+flag:
     ret
+flag2:
+    ret
+flag3:
+    ret
+
 
 blur:
     ; Parameters:
@@ -61,35 +19,150 @@ blur:
     ; [rsi] - blur_img
     ; [rdx] - width
     ; [rcx] - height
+    push rbp
+    mov rbp, rsp
+    sub rsp, 64
+    mov [rsp+56], r12
+
+    mov r11, rdi
+    mov r12, rsi
 
     xor r8, r8          ; r8 = row
     .row_loop:
         xor r9, r9      ; r9 = col
         .col_loop:
+            ;shift = (col + row*width)*3;
             mov rax, r8
             imul rax, rdx
             add rax, r9
-            add rax, rbp    ; rax = shift
+            imul rax, 3
+            
+            mov [rsp], rdx
+            mov [rsp+8], rcx
+            mov [rsp+16], r8
+            mov [rsp+24], r9
+            mov [rsp+32], r11
+            mov [rsp+40], r12
 
-            push rax
-            push rax
-            push rdx
-            call blurpixel
-            pop rdx
-            pop rax
+            
+            mov rdi, r11
+            add rdi, rax    ; [rdi] - img_pixel
+            mov rsi, r12
+            add rsi, rax    ; [rsi] - blur_pixel
+                            ; [rdx] - width
 
-            add r9, 1
+            
+            
+            cmp r8, 2
+            jl .copy
+            sub rcx, 2
+            cmp r8, rcx
+            jge .copy
+
+            cmp r9, 2
+            jl .copy
+            mov rcx, rdx
+            sub rcx, 2
+            cmp r9, rcx
+            jge .copy
+
+            xor r10, r10
+            .color_loop:
+                mov rdx, [rsp]
+                mov [rsp+48], r10
+                call blur_pixel
+                mov r10, [rsp+48]
+                inc rdi
+                inc rsi
+                inc r10
+                cmp r10, 2
+                jle .color_loop
+            jmp .skip_copy
+
+            .copy:
+                mov al, byte [rdi]
+                mov byte[rsi], al
+                mov al, byte [rdi+1]
+                mov byte[rsi+1], al
+                mov al, byte [rdi+2]
+                mov byte[rsi+2], al
+
+            .skip_copy:
+
+            mov r12, [rsp+40]
+            mov r11, [rsp+32]
+            mov r9, [rsp+24]
+            mov r8, [rsp+16]
+            mov rcx, [rsp+8]
+            mov rdx, [rsp]
+
+            call flag2
+            inc r9
+            call flag3
             cmp r9, rdx
             jl .col_loop
 
-        add r8, 1
+        inc r8
         cmp r8, rcx
         jl .row_loop
-
+    mov r12, [rsp+56]
+    leave
     ret
 
-section .data
-    float256 dd 256.0
 
-section .bss
-    resb 16    ; For alignment
+blur_pixel:
+    ; Parameters:
+    ; [rdi] - img_pixel
+    ; [rsi] - blur_pixel
+    ; [rdx] - width
+    push rbp
+    mov rbp, rsp
+    sub rsp, 16
+    ;  Save rbx, rbp, r12, r13, r14, r15
+    mov [rsp], r12
+    mov [rsp+8], r13
+
+    xor rax, rax            ; Clear rax (sum)
+
+    ; Loop through matrix rows
+    xor r8, r8
+    .small_row_loop:
+        ; Loop through matrix columns
+        xor r9, r9
+        .small_col_loop:
+            mov r10, r9
+            add r10, -2
+            imul r10, 3                  ;r10 = (col - 2)*3
+            mov r11, r8
+            add r11, -2
+            imul r11, rdx
+            imul r11, 3                  ;r11 = (row - 2)*width*3
+            add r10, r11                ;r10 = (col - 2)*3 + (row - 2)*width*3
+            movzx r12, byte [rdi + r10]  ;*(img_pixel + (col - 2)*3 + (row - 2)*width*3);
+            mov r10, r8
+            imul r10, 5
+            add r10, r9
+            movzx r13, byte [matrix + r10]
+            imul r12, r13
+            add rax, r12  ; Accumulate sum
+            inc r9
+        cmp r9, 5
+        jl .small_col_loop
+
+    inc r8
+    cmp r8, 5
+    jl .small_row_loop
+
+    ; Normalize and store the result
+    mov rcx, 256
+    call flag
+    cqo
+    div rcx
+    mov byte [rsi], al
+
+    mov r12, [rsp]
+    mov r13, [rsp+8]
+    leave
+    ret
+
+

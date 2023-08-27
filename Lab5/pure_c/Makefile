@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99
+CFLAGS = -std=c99 -O3
 
 TARGET = lab
 SOURCES = lab.c

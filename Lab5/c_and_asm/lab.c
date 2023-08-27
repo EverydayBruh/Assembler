@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <time.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../stb_image/stb_image.h"
@@ -12,9 +13,14 @@
 int blur(unsigned char *img, unsigned char *blur_img, int width, int hight);
 
 
-int main(void) {
+int main(int argc, char* argv[]) {
+    if (argc != 3) {
+        printf("Usage: %s <string1> <string2>\n", argv[0]);
+        return 1;
+    }
+
+    char* name = argv[1];
     const char *relativePath = "../img/";
-    char *name = "3";
     int width, height, channels;
 
 
@@ -39,10 +45,17 @@ int main(void) {
         exit(1);
     }
 
+    clock_t start_time, end_time;
+    start_time = clock(); 
     blur(img, blur_img, width, height);
+    end_time = clock();
+    double cpu_time_used = ((double) (end_time - start_time)) / CLOCKS_PER_SEC;
+    printf("Process time: %fs\n", cpu_time_used);
     
-    char blurName[84]; 
-    snprintf(blurName, sizeof(blurName), "%s%s%s", relativePath, name, "_blured.jpg");
+    char blurName[84];
+    //snprintf(blurName, sizeof(blurName), "%s%s%s", relativePath, name, "_blured.jpg");  
+    name = argv[2];
+    snprintf(blurName, sizeof(blurName), "%s%s%s", relativePath, name, ".jpg");  
     stbi_write_jpg(blurName, width, height, 3, blur_img, 100);
 
     stbi_image_free(img);
