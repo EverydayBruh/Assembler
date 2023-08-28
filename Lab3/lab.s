@@ -7,27 +7,27 @@ input_msg:
 	db 		"Filename: ", 0x0
 input_msg_len:
 	db 		11
-file_exist_msg:
-	db 		"File already exists. Rewrite? (y/n)", 0x0
-file_exist_msg_len:
-	db 		36
 buffer_len:
 	db 		10
 vowels:
-    db "aeiou", 0        ; String containing the lowercase vowels and a null terminator.
+    db "AEIOU", 0       
+flag:
+	db	0 
 
 section .bss
 buffer:
 	resb	256
-symb:
-	resb 	1
 fd:
 	resq 	1
 
 section	.text
 	global	_start
+	extern	get_env_value
 
-;rdi - addr
+
+
+
+
 
 _start:
 	mov 	rax, 1
@@ -40,29 +40,12 @@ _start:
 	mov 	rsi, buffer
 	movzx 	rdx, byte[buffer_len]
 	syscall ; Invokes the system call to read user input and store it in the buffer.
-	mov 	byte[buffer + rax - 1], 0x0 ; Null-terminate the input stored in the buffer.
-	mov 	rax, 2
-	mov 	rdi, buffer
-    mov 	rsi, 0000o  ; File flags (O_WRONLY | O_CREAT | O_TRUNC).
-    mov 	rdx, 0666o  
-	syscall  ; Invokes the system call to open the file.
+    mov rdi, rsp
+    
+    xor rsi, rsi ; Initialize rsi to 0 for the index
 
-	cmp 	rax, 0
-	jl		create_file ; Jump to the label create_file if the file doesn't exist.
-		
-        ; If the file exists, prompt the user to rewrite it.
-        mov 	rax, 1
-		mov 	rdi, 1
-		mov 	rsi, file_exist_msg
-		movzx 	rdx, byte[file_exist_msg_len]
-		syscall
-		mov 	rax, 0
-		mov 	rdi, 0
-		mov 	rsi, rsp
-		movzx 	rdx, byte[buffer_len]
-		syscall
-		cmp 	byte[rsp], 'y'
-		jne 	fin
+	mov 	byte[buffer + rax - 1], 0x0 ; Null-terminate the input stored in the buffer.
+	
 	create_file:    ; Label used to create the file.
 		mov 	rax, 2
 		mov 	rdi, buffer
@@ -71,7 +54,7 @@ _start:
 		syscall
 
 	mov 	[fd], rax       ; Store the file descriptor in the 'fd' variable.
-	mov 	byte[symb], 0   ; Clear the 'symb' variable to mark the absence of a symbol.
+	mov 	byte[flag], 0   ; Clear the 'flag' variable. 0 - no world, 1 - save, 2 - delete
 
 	while_line:
         ; Read a line from the buffer.
@@ -80,15 +63,15 @@ _start:
 		mov 	rsi, buffer
 		movzx 	rdx, byte[buffer_len]
 		syscall
-        ; Check if the return value of the 'read' syscall is 0 (end of file).
+        ; Check end of file
 		cmp 	rax, 0
 		je 		fin
 
-		mov 	r10, rax    ; Store the number of characters read (line length) in r10.
+		mov 	r10, rax    ; line length in r10.
 		xor 	rcx, rcx    ; Loop counter RCX
 		xor 	r15, r15 	; to_write
 		while_read_line:
-            ; Check if the end of the line has been reached.
+            ; Check if end of the line has been reached.
 			cmp 	rcx, r10
 			je 		while_read_line_end
 
@@ -101,47 +84,51 @@ _start:
 			je 		meet_new_line
             
 
-            mov rdi, buffer
-            add rdi, rcx
-            call is_vowel
+            
 
 
-            mov 	al, byte[buffer + rcx] ; Process a character (write to the output buffer).
+            mov 	bl, byte[buffer + rcx] 
+
             ; Check if it's the first symbol of the line.
-            cmp 	byte[symb], 0
-            je 		first_symb
-            ; Check if the current character matches the last symbol written.
-            cmp 	byte[symb], al
-            jne 	useful_symb
-            ; If the current character matches the last symbol written, skip it.
+            cmp 	byte[flag], 0
+            jne 		not_first_symb
+				; Process firs symbol
+				mov 	ah, bl
+				call is_vowel ; rax = 2 of vowel, 1 otherwise
+				mov byte [flag], al
+
+			not_first_symb:
+            ; Check if the word need to be saved
+            cmp 	byte[flag], 1
+            je 	save_symb
+
+            ; If the current word not need to be saved, skip it.
             inc 	rcx
             jmp 	while_read_line
-            first_symb:
-                ; Save the first symbol encountered in the 'symb' variable.
-                mov 	byte[symb], al
             
-            useful_symb:
-                ; Write the current character to the output buffer.
-                mov 	byte[buffer + r15], al
+            
+            save_symb:
+                mov 	byte[buffer + r15], bl
                 inc 	r15
                 inc 	rcx
                 jmp		while_read_line
 
 			not_a_word:
-                ; Check if this is not the first character and add a space.
-				cmp		byte[symb], 0
+                ; Check if we printed word and add a space.
+				cmp		byte[flag], 2
 				je 		not_first
 					mov 	byte[buffer + r15], 0x20
 					inc 	r15
 				not_first:
-				mov 	byte[symb], 0   ; Clear the 'symb' variable to mark the absence of a symbol.
+				mov 	byte[flag], 0   ; Clear the 'flag' variable to mark the end of word
 				inc 	rcx
 				jmp 	while_read_line
 
 			meet_new_line:
-                ; Clear the 'symb' variable to mark the absence of a symbol.
-				mov 	byte[symb], 0
+                ; Clear the 'flag' variable to mark the end of word
+				mov 	byte[flag], 0
 				inc 	rcx
+				mov 	byte[buffer + r15], 0xA
 				inc		r15
 				jmp 	while_read_line
 
@@ -149,57 +136,55 @@ _start:
 		while_read_line_end:
         ; Write the processed line to the file.
 		mov 	rax, 1
-		mov 	rdi, [fd] ; File descriptor stored in 'fd'.
+		mov 	rdi, [fd] 
 		mov 	rsi, buffer
 		mov 	rdx, r15
-		syscall ; Invokes the system call to write the line to the file.
+		syscall 
 
 		dec 	r15                     ; Decrease r15 to remove the newline character from the end.
 		cmp 	byte[buffer + r15], 0xA ; Check if the last character of the line is a newline.
 		jne 	while_line
-		mov 	byte[symb], 0
+		mov 	byte[flag], 0
 		jmp 	while_line
 
 fin:
 	mov 	rax, 3             ; 'close' syscall
-    mov 	rdi, [fd]          ; file descriptor  
-    syscall                    ; Invokes the system call to close the file.
+    mov 	rdi, [fd]          
+    syscall                    
 	mov		eax, 60
 	mov		edi, 0
-	syscall                    ; Invokes the system call to exit the program.
+	syscall                    ;exit the program.
 
 
 
 ; Function to check if the current symbol is a vowel
 ; Input:
-;   rdi: ASCII character to check
+;   ah: ASCII character to check
 ; Output:
-;   rax: 1 (true) if the character is a vowel, 0 (false) otherwise
+;   al: 2 if the character is a vowel, 1 otherwise
 is_vowel:
     push rdx                 ; Save rdx register on the stack
     push rsi                 ; Save rsi register on the stack
 
-    ; Convert the ASCII character to lowercase (if it's an uppercase letter).
-    xor rax, rax
-    mov al, byte [rdi]       ; Load the ASCII character into al.
-    and al, 0xDF             ; Convert to uppercase (set the 6th bit).
-    mov byte [rdi], al       ; Store the converted character back in memory.
+    and ah, 0xDF             ; Convert to uppercase (set the 6th bit).
 
     ; Check if the character is a vowel 
-    mov rsi, vowels          
-    xor rax, rax             
+    mov rsi, vowels              
     check_vowel_loop:
         lodsb                    ; Load the next character from the vowels string into al.
         cmp al, 0                ; Check if the end of the string is reached (null terminator).
-        je check_vowel_end       ; If so, end the loop.
+        je not_found_vowel       ; If so, end the loop.
 
-        cmp al, byte [rdi]       ; Compare the current vowel with the input character.
+        cmp al, ah     ; Compare the current vowel with the input character.
         je found_vowel           ;
 
         jmp check_vowel_loop     ; Continue the loop to check the next vowel.
 
     found_vowel:
-        mov rax, 1               ; Set rax to 1 (true) to indicate a vowel.
+        mov al, 2               ; Set al to 2 to indicate a vowel.
+        jmp check_vowel_end
+	not_found_vowel:
+		mov al, 1               
         jmp check_vowel_end
 
     check_vowel_end:
