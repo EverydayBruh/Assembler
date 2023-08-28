@@ -2,6 +2,15 @@
 
     section	.data
 
+    
+    max_steps:
+        dd	100000
+    neg_one:
+        dd -1.0
+    pos_one:
+        dd 1.0   
+    one_six_neg:
+        dd -0.16666667
     printf_float_spec:
         db 	"%f", 0xA, 0x0
     overflow_message:
@@ -22,16 +31,6 @@
         db 	"w", 0x0
     fprintf_spec:
         db	"Step %d: res = %f, member = %f", 0xA, 0x0
-    test_filename:
-        db	"file", 0x0
-    max_steps:
-        dd	1000000
-    neg_one:
-        dd -1.0
-    pos_one:
-        dd 1.0   
-    one_six_neg:
-        dd -0.16666667
         
     section .bss 
         symb 	resb 1 
@@ -89,9 +88,9 @@
         movss xmm9, xmm3        ; step = -(1.0 /6) * pow(x, 3);
         movss xmm10, xmm0        ; Store x in xmm10 (res)     
         mov   rcx, 1           ; rcx = n
-        while_sinh_begin:
+        while_ln_begin:
             cmp ecx, dword[max_steps] ; Compare loop counter to max_steps
-            jge sinh_bad_end         ; Jump to sinh_bad_end if the condition is true
+            jge ln_soverflow         ; Jump to ln_soverflow if the condition is true
             
             ; Save registers and local variables on the stack
             mov	[rbp - 16], rcx
@@ -173,14 +172,14 @@
 
             ; Compare |step| with prec
             ucomiss	xmm12, xmm1
-            jbe 	sinh_happy_end   ; Jump to sinh_happy_end if |step| <= prec
-            jmp	while_sinh_begin
-    sinh_bad_end:	
+            jbe 	ln_success   ; Jump to ln_success if |step| <= prec
+            jmp	while_ln_begin
+    ln_soverflow:	
         xor	rax, rax
         mov	rdi, overflow_message
         call	printf
         
-    sinh_happy_end:	
+    ln_success:	
         movss	xmm0, xmm10
         leave   ; Epilogue: Restore stack and base pointer
         ret
@@ -243,6 +242,6 @@
         cvtss2sd xmm0, dword[x]
         call	printf
     fin:
-        mov	rbx, [rbp - 8]  ; Restore rbx register value
-        leave               ; Epilogue: Restore stack and base pointer
+        mov	rbx, [rbp - 8]  
+        leave               
         ret

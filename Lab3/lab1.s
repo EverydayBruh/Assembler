@@ -3,10 +3,15 @@ bits	64
 section	.data
 
 
-input_msg:
-	db 		"Filename: ", 0x0
-input_msg_len:
-	db 		11
+
+output_file:
+	resb	100			
+file_val:
+	db	"out", 0
+var_not_found_msg:
+	db 		"Environment variable not found", 0x0
+var_not_found_msg_len:
+	db 		31
 buffer_len:
 	db 		10
 vowels:
@@ -30,25 +35,34 @@ section	.text
 
 
 _start:
+
+	mov	rdi, output_file
+	mov	rsi, file_val
+	mov	rcx, qword[rsp]
+	lea	rdx, [rsp+8*rcx+16]
+	push	rdx
+	xchg	rdi, qword[rsp]
+	call	get_env_value
+	pop	rdx
+
+	cmp	rax, -1
+	jne	else__start
+	
 	mov 	rax, 1
 	mov 	rdi, 1
-	mov 	rsi, input_msg
-	movzx 	rdx, byte[input_msg_len]
-	syscall ; Invokes the system call to print the input_msg.
-	mov 	rax, 0
-	mov 	rdi, 0
-	mov 	rsi, buffer
-	movzx 	rdx, byte[buffer_len]
-	syscall ; Invokes the system call to read user input and store it in the buffer.
-    mov rdi, rsp
+	mov	rsi, var_not_found_msg
+	mov	rdx, var_not_found_msg_len
+	syscall 
+	call	return_1
     
+	else__start:
     xor rsi, rsi ; Initialize rsi to 0 for the index
 
-	mov 	byte[buffer + rax - 1], 0x0 ; Null-terminate the input stored in the buffer.
+	;mov 	byte[buffer + rax - 1], 0x0 ; Null-terminate the input stored in the buffer.
 	
 	create_file:    ; Label used to create the file.
 		mov 	rax, 2
-		mov 	rdi, buffer
+		mov 	rdi, output_file
 	    mov 	rsi, 1101o  ; File flags (O_WRONLY | O_CREAT | O_APPEND).
 	    mov 	rdx, 0666o  ; FIle premission
 		syscall
@@ -65,7 +79,7 @@ _start:
 		syscall
         ; Check end of file
 		cmp 	rax, 0
-		je 		fin
+		je 		return_0
 
 		mov 	r10, rax    ; line length in r10.
 		xor 	rcx, rcx    ; Loop counter RCX
@@ -147,13 +161,19 @@ _start:
 		mov 	byte[flag], 0
 		jmp 	while_line
 
-fin:
+return_0:
 	mov 	rax, 3             ; 'close' syscall
     mov 	rdi, [fd]          
     syscall                    
 	mov		eax, 60
 	mov		edi, 0
 	syscall                    ;exit the program.
+
+return_1:
+	mov	rax, 60
+	mov	rdi, 1
+	syscall
+	ret
 
 
 
