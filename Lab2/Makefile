@@ -1,13 +1,14 @@
 AS = nasm
 LD = gcc
 
-LDFLAGS = -no-pie
-NASMFLAGS = -f elf64 -g
+LDFLAGS = -no-pie 
+NASMFLAGS = -f elf64 -g -Dasc_value=0
 CFLAGS = -fPIE
 SRCS = lab.s
 OBJS = $(SRCS:.s=.o)
-
 EXE = lab
+
+
 
 all: $(EXE)
 
