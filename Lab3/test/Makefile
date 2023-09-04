@@ -4,6 +4,7 @@ LD = ld
 ASFLAGS = -g -f elf64
 LDFLAGS = -static
 
+#SRCS = lab1.s env.s
 SRCS = lab.s
 OBJS = $(SRCS:.s=.o)
 

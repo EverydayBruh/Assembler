@@ -1,1 +1,7 @@
-Step 1:\tres = 0.200000,\tmember = -0.001333
+Step 1: res = 0.500000, member = -0.020833
+Step 2: res = 0.479167, member = 0.002344
+Step 3: res = 0.481510, member = -0.000349
+Step 4: res = 0.481162, member = 0.000059
+Step 5: res = 0.481221, member = -0.000011
+Step 6: res = 0.481210, member = 0.000002
+Step 7: res = 0.481212, member = -0.000000
